@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>assume.in | Financial Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s ease; }
+        .glass-card {
+            background: rgba(245, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 2px solid green;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 160px;
+        }
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            border: 2px solid lightskyblue;
+        }
+        .glass-card:hover { transform: translateY(-5px); }
+        #sidebar { transition: transform 0.16s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-open { transform: translateX(0) !important; }
+        
+        .page { display: none; min-height: 100vh; width: 100%; }
+        .page.active { display: block; }
+        #page-about.active, #page-price.active { display: flex !important; }
+
+        /* --- STYLED ANALYSIS SECTION --- */
+        .analysis-container {
+            background: rgba(241, 245, 249, 0.5);
+            border-radius: 2rem;
+            padding: 2rem;
+            margin-top: 2rem;
+            width: 100%;
+        }
+        .dark .analysis-container {
+            background: rgba(30, 41, 59, 0.4);
+        }
+        .reading-notes {
+            font-family: 'Lora', serif;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin-top: -4px; 
+            font-size: 1.1rem;
+        }
+
+        @keyframes colorShift {
+            0% { color: #eb87ff; }
+            50% { color: #ee3; }
+            100% { color: #ffffff; }
+        }
+        .animated-logo {
+            animation: colorShift 4s infinite linear;
+        }
+
+        .dashboard-container {
+            width: 100%;
+            background: white;
+            border-radius: 18px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            overflow: hidden;
+            margin: 20px 0;
+            border: 1px solid #eee;
+        }
+        .dark .dashboard-container { background: #1e293b; border-color: #334155; }
+        .table-wrapper { overflow-x: auto; width: 100%; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 440px; }
+        th, td { padding: 12px 10px; border-bottom: 1px solid #eee; text-align: right; font-size: 0.88rem; }
+        .dark th, .dark td { border-bottom: 1px solid #334155; }
+
+        th:nth-child(5), td:nth-child(5) {
+            border-left: 1px solid #2563eb;
+        }
+        .dark th:nth-child(5), .dark td:nth-child(5) {
+            border-left: 2px solid rgba(255,255,255,0.2) !important;
+        }
+
+        th:first-child, td:first-child {
+            position: sticky;
+            left: 0;
+            background: white;
+            z-index: 10;
+            text-align: left !important;
+            min-width: 145px; 
+            max-width: 130px;
+            font-weight: 602;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .dark th:first-child, .dark td:first-child { background: #1e293b; }
+
+        th {
+            background: #1d4ed8;
+            color: white;
+            text-transform: uppercase;
+            font-size: 0.88rem;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        th:first-child { z-index: 20; background: #1d4ed8 !important; }
+        .comparison-table td { text-align: center; }
+        .comparison-table th { text-align: center; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-gray-900 dark:text-white overflow-x-hidden" onclick="autoNavigateHome(event)">
+
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden backdrop-blur-sm"></div>
+    <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-900 z-50 shadow-2xl transform -translate-x-full flex flex-col p-6">
+        <div class="flex-1">
+            <h2 class="text-xl font-bold mb-8 text-blue-600"is>Navigation</h2>
+            <nav class="space-y-4">
+                <button onclick="event.stopPropagation(); navigateTo('about')" class="block w-full text-center p-3 border-2 border-blue-600 text-blue-600 font-bold rounded-2xl hover:bg-blue-50 transition-colors">About us</button>
+            </nav>
+        </div>
+        <button onclick="openAdminPrompt()" class="mt-auto w-full py-3 px-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-semibold rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
+            Admin Panel
+        </button>
+    </aside>
+
+    <div id="password-modal" class="fixed inset-0 flex items-center justify-center z-[60] hidden bg-black/60 backdrop-blur-md">
+        <div class="bg-white dark:bg-slate-800 p-8 rounded-[2rem] shadow-xl w-80">
+            <h3 class="text-lg font-bold mb-4 text-center">Admin Access</h3>
+            <input type="password" id="admin-pass" class="w-full p-3 border rounded-xl mb-4 dark:bg-slate-700 dark:border-slate-600 outline-none focus:ring-2 focus:ring-blue-500 text-black dark:text-white" placeholder="Password">
+            <div class="flex gap-3">
+                <button onclick="closeAdminPrompt()" class="flex-1 py-2 text-gray-500">Cancel</button>
+                <button onclick="verifyPassword()" class="flex-1 py-2 bg-blue-600 text-white rounded-lg">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <nav id="global-nav" class="p-3 sticky top-0 z-30 bg-blue-600 shadow-lg text-white">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 id="logo" class="text-2xl font-bold tracking-tighter cursor-pointer">
+                <span class="animated-logo">assume</span><span>.in</span>
+            </h1>
+            <div class="flex items-center space-x-4">
+                <button onclick="event.stopPropagation(); navigateTo('price')" class="px-4 py-1.5 border-2 border-white rounded-full font-bold hover:bg-white hover:text-blue-600 transition-all">Price</button>
+                <button id="theme-toggle" class="p-2 rounded-full bg-blue-700 hover:bg-blue-800">
+                    <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                    <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1z"></path></svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main id="page-home" class="page active container mx-auto px-6 py-8">
+        <header class="mb-10">
+            <h2 class="text-3xl font-bold">Quarterly Results</h2>
+            <p class="text-gray-500 dark:text-gray-400">Financial Quarterly Results of listed Companies (NSE/BSE)</p>
+        </header>
+        <div id="returns-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </main>
+
+    <main id="page-reading" class="page min-h-screen bg-white dark:bg-slate-950">
+        <div class="max-w-5xl mx-auto px-4 py-8">
+            <article id="reading-content"></article>
+        </div>
+    </main>
+
+    <main id="page-about" class="page items-center justify-center p-6 bg-slate-50 dark:bg-slate-950">
+        <div class="max-w-md w-full bg-white dark:bg-slate-900 border-2 border-blue-600 p-8 rounded-[2.5rem] shadow-2xl text-center" onclick="event.stopPropagation()">
+            <h2 class="text-3xl font-black text-blue-600 mb-6">About Us</h2>
+            <p class="text-lg font-medium leading-relaxed">
+                This WebApp was made and handle by the <span class="font-bold text-blue-500">PiCell</span>.<br><br>
+                All Data are Provided by the <span class="font-bold text-blue-500">PiCell Company</span>.
+            </p>
+            <button onclick="navigateTo('home')" class="mt-8 px-8 py-2 bg-blue-600 text-white rounded-full font-bold">Close</button>
+        </div>
+    </main>
+
+    <main id="page-price" class="page items-center justify-center p-6 bg-slate-50 dark:bg-slate-950">
+        <div class="max-w-md w-full bg-white dark:bg-slate-900 border-2 border-blue-600 p-8 rounded-[2.5rem] shadow-2xl text-center" onclick="event.stopPropagation()">
+            <h2 class="text-3xl font-black text-blue-600 mb-2">Pro Plan</h2>
+            <div class="text-4xl font-black my-4">149 INR <span class="text-sm font-normal text-gray-500">/ Monthly</span></div>
+            <ul class="text-left space-y-4 my-6 px-4">
+                <li class="flex items-center gap-3">
+                    <span class="bg-blue-100 text-blue-600 p-1 rounded-full text-[10px]">✔</span>
+                    <span class="font-semibold">Full Access to Analysis Notes</span>
+                </li>
+                <li class="flex items-center gap-3">
+                    <span class="bg-blue-100 text-blue-600 p-1 rounded-full text-[10px]">✔</span>
+                    <span class="font-semibold">Priority Quarterly Updates</span>
+                </li>
+                <li class="flex items-center gap-3">
+                    <span class="bg-blue-100 text-blue-600 p-1 rounded-full text-[10px]">✔</span>
+                    <span class="font-semibold">Ad-Free Viewing Experience</span>
+                </li>
+            </ul>
+            <button onclick="navigateTo('home')" class="w-full py-3 bg-blue-600 text-white rounded-2xl font-bold text-lg hover:bg-blue-700 transition-colors">Get Started</button>
+        </div>
+    </main>
+
+    <main id="page-admin" class="page container mx-auto px-6 py-8">
+        <header class="mb-10 flex flex-col md:flex-row justify-between md:items-center gap-4">
+            <div>
+                <h2 class="text-3xl font-bold text-green-600">Admin Control</h2>
+                <p class="text-gray-500">Edit content and view statistics below.</p>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="addNewCard()" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">+ New Card</button>
+                <button onclick="navigateTo('home')" class="flex-1 bg-gray-200 dark:bg-slate-800 px-4 py-2 rounded-lg">Exit</button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div class="bg-blue-600 text-white p-6 rounded-[2rem] shadow-lg">
+                <p class="text-xs font-bold uppercase tracking-wider opacity-80">Total Website Visitors</p>
+                <h3 id="visitor-count" class="text-4xl font-black mt-2">0</h3>
+                <p class="text-[10px] mt-2 font-medium opacity-60">Real-time unique sessions</p>
+            </div>
+        </div>
+
+        <div id="admin-editor-list" class="space-y-8 pb-20"></div>
+    </main>
+
+    <script>
+        // --- VISITOR TRACKING LOGIC ---
+        function trackVisitor() {
+            let totalVisitors = parseInt(localStorage.getItem('total_visitors')) || 0;
+            // Check if this is a new session
+            if (!sessionStorage.getItem('session_tracked')) {
+                totalVisitors++;
+                localStorage.setItem('total_visitors', totalVisitors);
+                sessionStorage.setItem('session_tracked', 'true');
+            }
+            return totalVisitors;
+        }
+
+        const defaultTable = {
+            "title": "Quarterly Financials",
+            "headers": ["Particulars", "Q1", "Q2", "Q3", "9M"],
+            "rows": [
+                ["Operational Revenue", 0, 0, 0, 4],
+                ["Total Income", 0, 0, 0, 8],
+                ["Total Expenses", 0, 0, 0, 12],
+                ["Net Profit", 0, 0, 0, 16]
+            ]
+        };
+
+        const defaultComparison = {
+            "title": "Growth Comparison",
+            "rows": [
+                { "label": "Operational Revenue", "qoq": "1%", "yoy": "2%" },
+                { "label": "Total Income", "qoq": "3%", "yoy": "4%" },
+                { "label": "General Expense", "qoq": "5%", "yoy": "6%" },
+                { "label": "Total Expenses", "qoq": "7%", "yoy": "8%" },
+                { "label": "Net Profit", "qoq": "9%", "yoy": "10%" }
+            ]
+        };
+
+        let companyData = JSON.parse(localStorage.getItem('assume_data')) || [];
+        const saveData = () => localStorage.setItem('assume_data', JSON.stringify(companyData));
+
+        function autoNavigateHome(event) {
+            const currentPage = document.querySelector('.page.active').id;
+            if (currentPage === 'page-about' || currentPage === 'page-price') {
+                if (!event.target.closest('div[class*="max-w-md"]')) {
+                    navigateTo('home');
+                }
+            }
+        }
+
+        // --- NAVIGATION LOGIC ---
+        // Treat Home as the ONLY entry in history.
+        window.onpopstate = (e) => {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar.classList.contains('sidebar-open')) {
+                sidebar.classList.remove('sidebar-open');
+                document.getElementById('sidebar-overlay').classList.add('hidden');
+                // stay on current page state
+                window.history.pushState({pageId: document.querySelector('.page.active').id}, "");
+                return;
+            }
+
+            const activePageId = document.querySelector('.page.active').id;
+            if (activePageId !== 'page-home') {
+                // Return to home from any subpage
+                renderPage('home');
+                window.history.replaceState({pageId: 'home'}, "", "index.html");
+            } else {
+                // On Home: A back swipe will exit the site because we don't have pushStates behind it.
+            }
+        };
+
+        function navigateTo(pageId, params = null) {
+            const state = {pageId, params};
+            document.getElementById('sidebar').classList.remove('sidebar-open');
+            document.getElementById('sidebar-overlay').classList.add('hidden');
+
+            if(pageId === 'home') {
+                window.history.replaceState(state, "", "index.html");
+            } else {
+                // If moving from home to a subpage, we use pushState once
+                // This ensures the back swipe brings you home without exit.
+                if (document.querySelector('.page.active').id === 'page-home') {
+                    window.history.pushState(state, "", `#${pageId}`);
+                } else {
+                    // Moving between subpages replaces the state so history doesn't stack.
+                    window.history.replaceState(state, "", `#${pageId}`);
+                }
+            }
+            renderPage(pageId, params);
+        }
+
+        function renderPage(pageId, params) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            const isUtilityPage = (pageId === 'about' || pageId === 'price');
+            document.getElementById('global-nav').classList.toggle('hidden', isUtilityPage);
+            
+            const activePage = document.getElementById(`page-${pageId}`);
+            if(activePage) activePage.classList.add('active');
+            
+            if(pageId === 'home') renderCards();
+            if(pageId === 'reading') renderReadingPage(params);
+            if(pageId === 'admin') {
+                renderAdminTools();
+                document.getElementById('visitor-count').innerText = localStorage.getItem('total_visitors') || 0;
+            }
+            window.scrollTo(0,0);
+        }
+
+        function renderCards() {
+            const grid = document.getElementById('returns-grid');
+            if (companyData.length === 0) {
+                grid.innerHTML = '<p class="text-gray-400">No data available.</p>';
+                return;
+            }
+            grid.innerHTML = companyData.map(c => `
+                <div onclick="event.stopPropagation(); navigateTo('reading', ${c.id})" class="glass-card p-6 rounded-[2rem] shadow-sm">
+                    <div class="mb-4">
+                        <span class="text-xs font-bold text-blue-500 uppercase tracking-widest">${c.ticker || 'TICKER'}</span>
+                        <h3 class="text-2xl font-black dark:text-gray-100 leading-tight mt-1">${c.name}</h3>
+                    </div>
+                    <div class="mt-auto pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-between items-end">
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-gray-400">Date</p>
+                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-300">${c.date || '00/00/0000'}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] uppercase font-bold text-gray-400">Mcap</p>
+                            <p class="text-lg font-bold text-blue-600 dark:text-blue-400">${c.mcap || '0 Cr'}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderReadingPage(id) {
+            const company = companyData.find(c => c.id == id);
+            const container = document.getElementById('reading-content');
+            if(!company) return container.innerHTML = "Not Found";
+            
+            let tableHtml = '';
+            if(company.financials) {
+                const f = company.financials;
+                tableHtml = `
+                    <h2 class="text-2xl font-bold mb-4">${f.title || 'Financials'}</h2>
+                    <div class="dashboard-container"><div class="table-wrapper"><table>
+                        <thead><tr>${f.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+                        <tbody>${f.rows.map(row => `
+                            <tr>${row.map((cell, i) => `<td>${(i !== 0 && !isNaN(cell)) ? Number(cell).toLocaleString() : cell}</td>`).join('')}</tr>
+                        `).join('')}</tbody>
+                    </table></div></div>`;
+            }
+
+            let compHtml = '';
+            if(company.comparison) {
+                const comp = company.comparison;
+                compHtml = `
+                    <h2 class="text-2xl font-bold mt-12 mb-4">${comp.title || 'Growth Comparison'}</h2>
+                    <div class="dashboard-container"><div class="table-wrapper"><table class="comparison-table">
+                        <thead><tr><th>Particulars</th><th>QoQ (%)</th><th>YoY (%)</th></tr></thead>
+                        <tbody>${comp.rows.map(item => `<tr><td>${item.label}</td><td>${item.qoq}</td><td>${item.yoy}</td></tr>`).join('')}</tbody>
+                    </table></div></div>`;
+            }
+
+            container.innerHTML = `
+                <header class="mb-10">
+                    <h1 class="text-4xl md:text-6xl font-black mt-2">${company.name}</h1>
+                    <div class="flex gap-4 mt-2 text-gray-500 font-bold">
+                        <span>Date: ${company.date || '-'}</span>
+                        <span>Mcap: ${company.mcap || '-'}</span>
+                    </div>
+                </header>
+                ${tableHtml}${compHtml}
+                <div class="analysis-container">
+                    <h2 class="text-2xl font-bold mb-4">${company.contentTitle || 'Analysis'}</h2>
+                    <div class="reading-notes">${company.content || ""}</div>
+                </div>
+            `;
+        }
+
+        function renderAdminTools() {
+            const container = document.getElementById('admin-editor-list');
+            container.innerHTML = companyData.map((c, idx) => `
+                <div class="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-gray-100 dark:border-slate-800 shadow-lg" onclick="event.stopPropagation()">
+                    <div class="flex justify-between items-center mb-6">
+                        <span class="text-sm font-bold bg-slate-100 dark:bg-slate-800 px-4 py-1 rounded-full">Entry #${idx + 1}</span>
+                        <button onclick="deleteCard(${c.id})" class="text-red-500 font-bold">Delete Item</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                        <input type="text" oninput="updateData(${c.id}, 'name', this.value)" value="${c.name}" class="p-3 bg-gray-50 dark:bg-slate-800 rounded-xl border" placeholder="Full Company Name">
+                        <input type="text" oninput="updateData(${c.id}, 'ticker', this.value)" value="${c.ticker}" class="p-3 bg-gray-50 dark:bg-slate-800 rounded-xl border" placeholder="Ticker">
+                        <input type="text" oninput="updateData(${c.id}, 'date', this.value)" value="${c.date || ''}" class="p-3 bg-gray-50 dark:bg-slate-800 rounded-xl border" placeholder="Date">
+                        <input type="text" oninput="updateData(${c.id}, 'mcap', this.value)" value="${c.mcap || ''}" class="p-3 bg-gray-50 dark:bg-slate-800 rounded-xl border" placeholder="Mcap">
+                        <input type="text" oninput="updateData(${c.id}, 'contentTitle', this.value)" value="${c.contentTitle || ''}" class="p-3 bg-gray-50 dark:bg-slate-800 rounded-xl border" placeholder="Paragraph Title">
+                    </div>
+                    <textarea oninput="updateData(${c.id}, 'content', this.value)" rows="4" class="w-full p-4 bg-gray-50 dark:bg-slate-800 rounded-xl border mb-4 font-mono text-sm">${c.content || ""}</textarea>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <textarea oninput="updateJson(${c.id}, 'financials', this.value)" rows="8" class="w-full p-4 bg-slate-900 text-green-400 rounded-xl border font-mono text-xs">${JSON.stringify(c.financials || defaultTable, null, 2)}</textarea>
+                        <textarea oninput="updateJson(${c.id}, 'comparison', this.value)" rows="8" class="w-full p-4 bg-slate-900 text-blue-400 rounded-xl border font-mono text-xs">${JSON.stringify(c.comparison || defaultComparison, null, 2)}</textarea>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateData(id, field, value) {
+            const company = companyData.find(c => c.id == id);
+            if(company) { company[field] = value; saveData(); }
+        }
+
+        function updateJson(id, field, jsonString) {
+            try {
+                const company = companyData.find(c => c.id == id);
+                if(company) { company[field] = JSON.parse(jsonString); saveData(); }
+            } catch(e) { }
+        }
+
+        function addNewCard() {
+            companyData.unshift({ id: Date.now(), name: "New Company", ticker: "NEW", date: "21/02/2026", mcap: "0 Cr", contentTitle: "Analysis", content: "", financials: defaultTable, comparison: defaultComparison });
+            saveData(); renderAdminTools();
+        }
+
+        function deleteCard(id) {
+            if(confirm("Delete?")) { companyData = companyData.filter(c => c.id !== id); saveData(); renderAdminTools(); }
+        }
+
+        function verifyPassword() {
+            if(document.getElementById('admin-pass').value === '123456') { closeAdminPrompt(); navigateTo('admin'); } else alert('Unauthorized');
+        }
+
+        document.getElementById('logo').onclick = (e) => {
+            e.stopPropagation();
+            document.getElementById('sidebar').classList.add('sidebar-open');
+            document.getElementById('sidebar-overlay').classList.remove('hidden');
+            window.history.pushState({sidebar: true}, "");
+        };
+
+        document.getElementById('sidebar-overlay').onclick = () => window.history.back();
+
+        function openAdminPrompt() { document.getElementById('password-modal').classList.remove('hidden'); }
+        function closeAdminPrompt() { document.getElementById('password-modal').classList.add('hidden'); document.getElementById('admin-pass').value=''; }
+
+        const themeBtn = document.getElementById('theme-toggle');
+        const setDark = (dark) => {
+            document.documentElement.classList.toggle('dark', dark);
+            document.getElementById('theme-toggle-dark-icon').classList.toggle('hidden', dark);
+            document.getElementById('theme-toggle-light-icon').classList.toggle('hidden', !dark);
+            localStorage.setItem('theme', dark ? 'dark' : 'light');
+        }
+        themeBtn.onclick = (e) => { e.stopPropagation(); setDark(!document.documentElement.classList.contains('dark')); };
+        setDark(localStorage.getItem('theme') === 'dark');
+
+        // INITIALIZE
+        trackVisitor();
+        window.history.replaceState({pageId: 'home'}, "", "index.html");
+        renderPage('home');
+    </script>
+</body>
+</html>
